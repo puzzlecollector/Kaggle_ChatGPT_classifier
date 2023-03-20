@@ -18,12 +18,16 @@ import seaborn as sns
 df_gpt = pd.read_csv("wiki_batch_1_gpt.csv") 
 df_human = pd.read_csv("wiki_batch_1_human.csv") 
 df = pd.concat([df_human, df_gpt], axis=0) 
+df = df.sample(frac=1).reset_index(drop=True) # shuffle rows 
 
 input_ids, attn_masks = [], [] 
 
 titles = df["titles"].values 
 contents = df["contents"].values 
 labels = df["labels"].values 
+
+tokenizer = AutoTokenizer.from_pretrained("monologg/kobigbird-bert-base") 
+
 
 for i in tqdm(range(len(titles)), position=0, leave=True): 
     encoded_input = tokenizer(str(titles[i]), str(contents[i]), max_length=512, truncation=True, padding="max_length") 
@@ -61,8 +65,6 @@ val_sampler = SequentialSampler(val_data)
 val_dataloader = DataLoader(val_data, sampler=val_sampler, batch_size=batch_size) 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
-
-tokenizer = AutoTokenizer.from_pretrained("monologg/kobigbird-bert-base") 
 
 class MeanPooling(nn.Module): 
     def __init__(self): 
@@ -119,7 +121,7 @@ device = torch.device("cuda")
 loss_func = nn.CrossEntropyLoss() 
 model = ChatGPTDetector().to(device) 
 optimizer = AdamW(model.parameters(), lr=2e-5, eps=1e-8) 
-epochs = 20
+epochs = 10
 total_steps = len(train_dataloader) * epochs
 scheduler = get_linear_schedule_with_warmup(optimizer, 
                                             num_warmup_steps = int(0.05*total_steps), 
@@ -163,7 +165,7 @@ for epoch_i in tqdm(range(0, epochs), desc="Epochs", position=0, leave=True, tot
     
     if best_val_loss > avg_val_loss: 
         best_val_loss = avg_val_loss 
-        torch.save(model.state_dict(), "KR_ChatGPT_Detector_v1.pt") 
+        torch.save(model.state_dict(), "KR_ChatGPT_Detector_v1_.pt") 
     
 print("done training!") 
 print(f"best validation loss : {best_val_loss}")
